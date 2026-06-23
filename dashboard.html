@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F6F3;
+    --surface: #FFFFFF;
+    --surface-2: #F1EFE8;
+    --border: rgba(0,0,0,0.10);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1A1A18;
+    --text-2: #5F5E5A;
+    --text-3: #888780;
+    --green-bg: #EAF3DE; --green-text: #27500A; --green-dot: #639922;
+    --orange-bg: #FAEEDA; --orange-text: #633806; --orange-dot: #BA7517;
+    --red-bg: #FCEBEB; --red-text: #791F1F; --red-dot: #E24B4A;
+    --blue-bg: #E6F1FB; --blue-text: #0C447C; --blue-dot: #378ADD;
+    --purple-bg: #EEEDFE; --purple-text: #3C3489;
+    --accent: #185FA5;
+    --nav-w: 200px;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; display: flex; min-height: 100vh; }
+
+  /* NAV */
+  nav { width: var(--nav-w); min-height: 100vh; background: var(--surface); border-right: 0.5px solid var(--border); padding: 24px 0; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 100; }
+  .nav-logo { padding: 0 20px 24px; border-bottom: 0.5px solid var(--border); margin-bottom: 8px; }
+  .nav-logo span { font-size: 13px; font-weight: 500; color: var(--text); letter-spacing: 0.02em; }
+  .nav-logo small { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13px; color: var(--text-2); cursor: pointer; border-radius: 0; transition: background 0.1s; border-left: 2px solid transparent; }
+  .nav-item:hover { background: var(--surface-2); color: var(--text); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--blue-bg); font-weight: 500; }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+
+  /* MAIN */
+  main { margin-left: var(--nav-w); flex: 1; padding: 32px 36px; max-width: 1100px; }
+
+  /* PAGE */
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 20px; font-weight: 500; color: var(--text); }
+  .page-header p { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+
+  /* SUMMARY CARDS */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+  .stat-card .label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 500; color: var(--text); line-height: 1; }
+  .stat-card .sub { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+  .stat-card.danger { border-left: 3px solid var(--red-dot); }
+  .stat-card.warn { border-left: 3px solid var(--orange-dot); }
+  .stat-card.ok { border-left: 3px solid var(--green-dot); }
+  .stat-card.info { border-left: 3px solid var(--blue-dot); }
+
+  /* SECTION BLOCK */
+  .block { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
+  .block-header { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid var(--border); }
+  .block-header h2 { font-size: 14px; font-weight: 500; }
+  .block-body { padding: 18px; }
+
+  /* BADGE */
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 400; white-space: nowrap; }
+  .badge.open { background: var(--surface-2); color: var(--text-2); border: 0.5px solid var(--border); }
+  .badge.discussion { background: var(--orange-bg); color: var(--orange-text); }
+  .badge.offer { background: var(--blue-bg); color: var(--blue-text); }
+  .badge.confirmed { background: var(--green-bg); color: var(--green-text); }
+  .badge.gap-critical { background: var(--red-bg); color: var(--red-text); }
+  .badge.gap-fixable { background: var(--orange-bg); color: var(--orange-text); }
+  .badge.gap-filled { background: var(--green-bg); color: var(--green-text); }
+  .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+
+  /* PROJECT CARD */
+  .project-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
+  .project-card-header { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .project-card-header:hover { background: var(--surface-2); }
+  .project-title { font-size: 14px; font-weight: 500; }
+  .project-meta { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+  .project-card-actions { display: flex; align-items: center; gap: 8px; }
+  .toggle-btn { background: none; border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 5px 10px; font-size: 12px; color: var(--text-2); cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .toggle-btn:hover { background: var(--surface-2); }
+  .toggle-icon { transition: transform 0.2s; display: inline-block; }
+  .toggle-icon.open { transform: rotate(180deg); }
+
+  /* PENDING PANEL */
+  .pending-panel { border-top: 0.5px solid var(--border); background: #FAFAF8; display: none; }
+  .pending-panel.open { display: block; }
+  .pending-panel-head { padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid var(--border); }
+  .pending-panel-head span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+  .pending-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pending-table th { text-align: left; padding: 8px 14px; color: var(--text-3); font-weight: 400; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid var(--border); }
+  .pending-table td { padding: 10px 14px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  .pending-table tr:last-child td { border-bottom: none; }
+  .pending-table tr:hover td { background: var(--surface-2); }
+  .note-text { font-size: 12px; color: var(--text-3); max-width: 220px; }
+  .muted { color: var(--text-3); font-style: italic; }
+  .rate-val { font-variant-numeric: tabular-nums; }
+
+  /* TALENTS TABLE */
+  .table-wrap { overflow-x: auto; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { text-align: left; padding: 9px 14px; color: var(--text-3); font-weight: 400; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid var(--border); }
+  .data-table td { padding: 11px 14px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--surface-2); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; margin-right: 8px; vertical-align: middle; }
+  .av-blue { background: var(--blue-bg); color: var(--blue-text); }
+  .av-purple { background: var(--purple-bg); color: var(--purple-text); }
+  .av-green { background: var(--green-bg); color: var(--green-text); }
+  .av-orange { background: var(--orange-bg); color: var(--orange-text); }
+  .talent-name { vertical-align: middle; font-weight: 500; }
+  .skill-tag { display: inline-block; background: var(--surface-2); color: var(--text-2); font-size: 11px; padding: 2px 8px; border-radius: 20px; margin: 2px 2px 2px 0; border: 0.5px solid var(--border); }
+  .avail-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+  /* PLANNING / GANTT */
+  .gantt-legend { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .gantt-wrap { overflow-x: auto; }
+  .gantt-table { border-collapse: collapse; font-size: 12px; min-width: 100%; }
+  .gantt-table th { background: var(--surface-2); padding: 7px 10px; text-align: center; border: 0.5px solid var(--border); color: var(--text-3); font-weight: 400; font-size: 11px; min-width: 52px; }
+  .gantt-table th.row-label { text-align: left; min-width: 160px; position: sticky; left: 0; background: var(--surface-2); z-index: 2; }
+  .gantt-table td { border: 0.5px solid var(--border); padding: 0; height: 36px; }
+  .gantt-table td.row-label { padding: 0 12px; font-weight: 400; color: var(--text-2); background: var(--surface); position: sticky; left: 0; z-index: 1; min-width: 160px; }
+  .gantt-table tr.project-row td { background: var(--surface-2); }
+  .gantt-table tr.project-row td.row-label { font-weight: 500; color: var(--text); font-size: 13px; }
+  .gantt-bar { height: 22px; border-radius: 3px; margin: 6px 3px; }
+  .bar-filled { background: var(--green-dot); opacity: 0.85; }
+  .bar-fixable { background: var(--orange-dot); opacity: 0.85; }
+  .bar-critical { background: var(--red-dot); opacity: 0.85; }
+  .bar-empty { background: transparent; }
+
+  /* SUMMARY ALERTS */
+  .alert-list { display: flex; flex-direction: column; gap: 8px; }
+  .alert-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; }
+  .alert-row.critical { background: var(--red-bg); color: var(--red-text); }
+  .alert-row.warn { background: var(--orange-bg); color: var(--orange-text); }
+  .alert-row.ok { background: var(--green-bg); color: var(--green-text); }
+
+  /* BUTTON */
+  btn, .btn { background: none; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; color: var(--text-2); cursor: pointer; }
+  .btn:hover { background: var(--surface-2); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { opacity: 0.9; }
+
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 12px; font-weight: 400; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <span>Resource Hub</span>
+    <small>Studio dashboard</small>
+  </div>
+  <div class="nav-item active" onclick="showPage('summary', this)">
+    <span class="nav-icon">◈</span> Summary
+  </div>
+  <div class="nav-item" onclick="showPage('projects', this)">
+    <span class="nav-icon">◧</span> Projects
+  </div>
+  <div class="nav-item" onclick="showPage('talents', this)">
+    <span class="nav-icon">◎</span> Talents
+  </div>
+  <div class="nav-item" onclick="showPage('planning', this)">
+    <span class="nav-icon">▤</span> Planning
+  </div>
+</nav>
+
+<main>
+
+  <!-- SUMMARY -->
+  <div id="page-summary" class="page active">
+    <div class="page-header">
+      <h1>Overview</h1>
+      <p>June 2026 · 5 active projects</p>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card danger">
+        <div class="label">Critical gaps</div>
+        <div class="value">3</div>
+        <div class="sub">Roles with no one available</div>
+      </div>
+      <div class="stat-card warn">
+        <div class="label">Fixable gaps</div>
+        <div class="value">5</div>
+        <div class="sub">Someone exists but is busy</div>
+      </div>
+      <div class="stat-card ok">
+        <div class="label">Filled roles</div>
+        <div class="value">18</div>
+        <div class="sub">Confirmed assignments</div>
+      </div>
+      <div class="stat-card info">
+        <div class="label">Pending roles</div>
+        <div class="value">8</div>
+        <div class="sub">Open or in discussion</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block-header">
+        <h2>Alerts requiring attention</h2>
+        <span class="badge gap-critical">3 critical</span>
+      </div>
+      <div class="block-body">
+        <div class="alert-list">
+          <div class="alert-row critical">
+            <span><strong>Brand Campaign Q3</strong> — Motion designer · no one available Jul–Sep</span>
+            <span class="badge gap-critical">Critical</span>
+          </div>
+          <div class="alert-row critical">
+            <span><strong>Product Launch</strong> — Copywriter · role open, no candidate</span>
+            <span class="badge gap-critical">Critical</span>
+          </div>
+          <div class="alert-row warn">
+            <span><strong>Brand Campaign Q3</strong> — Producer · Thomas K. busy until Jun 30</span>
+            <span class="badge gap-fixable">Fixable</span>
+          </div>
+          <div class="alert-row warn">
+            <span><strong>Social Series</strong> — Video editor · Lena M. on another project</span>
+            <span class="badge gap-fixable">Fixable</span>
+          </div>
+          <div class="alert-row ok">
+            <span><strong>Annual Report</strong> — All roles filled</span>
+            <span class="badge gap-filled">Filled</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block-header"><h2>Projects at a glance</h2></div>
+      <div class="block-body" style="padding: 0;">
+        <table class="data-table" style="font-size:13px;">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Dates</th>
+              <th>Filled</th>
+              <th>Pending</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:500;">Brand Campaign Q3</td>
+              <td class="muted">Jun 1 → Sep 30</td>
+              <td>4 / 6</td>
+              <td>2</td>
+              <td><span class="badge gap-critical">Critical gap</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Product Launch</td>
+              <td class="muted">Jul 15 → Oct 15</td>
+              <td>3 / 5</td>
+              <td>3</td>
+              <td><span class="badge gap-critical">Critical gap</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Social Series</td>
+              <td class="muted">May 1 → Aug 31</td>
+              <td>3 / 4</td>
+              <td>1</td>
+              <td><span class="badge gap-fixable">Fixable gap</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Annual Report</td>
+              <td class="muted">Apr 1 → Jun 30</td>
+              <td>4 / 4</td>
+              <td>0</td>
+              <td><span class="badge gap-filled">All filled</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Internal Rebrand</td>
+              <td class="muted">Aug 1 → Dec 31</td>
+              <td>2 / 6</td>
+              <td>4</td>
+              <td><span class="badge gap-fixable">Fixable gap</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div id="page-projects" class="page">
+    <div class="page-header">
+      <h1>Projects</h1>
+      <p>5 active projects · click a card to expand pending roles</p>
+    </div>
+
+    <!-- Project 1 -->
+    <div class="project-card">
+      <div class="project-card-header" onclick="togglePending('p1')">
+        <div>
+          <div class="project-title">Brand Campaign Q3</div>
+          <div class="project-meta">Jun 1 → Sep 30 · Client: Acme Corp · 3 roles pending</div>
+        </div>
+        <div class="project-card-actions">
+          <span class="badge gap-critical">2 critical gaps</span>
+          <button class="toggle-btn" id="btn-p1">
+            Pending roles <span class="toggle-icon" id="icon-p1">▾</span>
+          </button>
+        </div>
+      </div>
+      <div class="pending-panel" id="panel-p1">
+        <div class="pending-panel-head">
+          <span>Pending roles</span>
+          <button class="btn">+ Add role</button>
+        </div>
+        <table class="pending-table">
+          <thead>
+            <tr>
+              <th>Role</th><th>Potential name</th><th>Status</th><th>Rate (€/hr)</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:500;">Motion designer</td>
+              <td>Sara M.</td>
+              <td><span class="badge discussion">In discussion</span></td>
+              <td class="rate-val">85</td>
+              <td class="note-text">Available from Jul 1. Check portfolio first.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Copywriter</td>
+              <td class="muted">—</td>
+              <td><span class="badge open">Open</span></td>
+              <td class="muted">—</td>
+              <td class="note-text">Need native English speaker.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Producer</td>
+              <td>Thomas K.</td>
+              <td><span class="badge offer">Offer sent</span></td>
+              <td class="rate-val">110</td>
+              <td class="note-text">Waiting on confirmation by Friday.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Project 2 -->
+    <div class="project-card">
+      <div class="project-card-header" onclick="togglePending('p2')">
+        <div>
+          <div class="project-title">Product Launch</div>
+          <div class="project-meta">Jul 15 → Oct 15 · Client: NovaTech · 3 roles pending</div>
+        </div>
+        <div class="project-card-actions">
+          <span class="badge gap-critical">1 critical gap</span>
+          <button class="toggle-btn" id="btn-p2">
+            Pending roles <span class="toggle-icon" id="icon-p2">▾</span>
+          </button>
+        </div>
+      </div>
+      <div class="pending-panel" id="panel-p2">
+        <div class="pending-panel-head">
+          <span>Pending roles</span>
+          <button class="btn">+ Add role</button>
+        </div>
+        <table class="pending-table">
+          <thead>
+            <tr><th>Role</th><th>Potential name</th><th>Status</th><th>Rate (€/hr)</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:500;">Copywriter</td>
+              <td class="muted">—</td>
+              <td><span class="badge open">Open</span></td>
+              <td class="muted">—</td>
+              <td class="note-text">Critical — needed for launch materials.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">UX designer</td>
+              <td>Paul V.</td>
+              <td><span class="badge discussion">In discussion</span></td>
+              <td class="rate-val">95</td>
+              <td class="note-text">Intro call scheduled Thu.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Dev — frontend</td>
+              <td>Mia T.</td>
+              <td><span class="badge confirmed">Confirmed</span></td>
+              <td class="rate-val">120</td>
+              <td class="note-text">Starts Jul 15.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Project 3 -->
+    <div class="project-card">
+      <div class="project-card-header" onclick="togglePending('p3')">
+        <div>
+          <div class="project-title">Social Series</div>
+          <div class="project-meta">May 1 → Aug 31 · Client: Bloom Agency · 1 role pending</div>
+        </div>
+        <div class="project-card-actions">
+          <span class="badge gap-fixable">1 fixable gap</span>
+          <button class="toggle-btn" id="btn-p3">
+            Pending roles <span class="toggle-icon" id="icon-p3">▾</span>
+          </button>
+        </div>
+      </div>
+      <div class="pending-panel" id="panel-p3">
+        <div class="pending-panel-head">
+          <span>Pending roles</span>
+          <button class="btn">+ Add role</button>
+        </div>
+        <table class="pending-table">
+          <thead>
+            <tr><th>Role</th><th>Potential name</th><th>Status</th><th>Rate (€/hr)</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:500;">Video editor</td>
+              <td>Lena M.</td>
+              <td><span class="badge discussion">In discussion</span></td>
+              <td class="rate-val">75</td>
+              <td class="note-text">Lena busy until Jul — check if that works.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Project 4 -->
+    <div class="project-card">
+      <div class="project-card-header" onclick="togglePending('p4')">
+        <div>
+          <div class="project-title">Annual Report</div>
+          <div class="project-meta">Apr 1 → Jun 30 · Client: FinGroup · all roles filled</div>
+        </div>
+        <div class="project-card-actions">
+          <span class="badge gap-filled">All filled</span>
+          <button class="toggle-btn" id="btn-p4">
+            Pending roles <span class="toggle-icon" id="icon-p4">▾</span>
+          </button>
+        </div>
+      </div>
+      <div class="pending-panel" id="panel-p4">
+        <div class="pending-panel-head">
+          <span>Pending roles</span>
+          <button class="btn">+ Add role</button>
+        </div>
+        <table class="pending-table">
+          <thead>
+            <tr><th>Role</th><th>Potential name</th><th>Status</th><th>Rate (€/hr)</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:500;" colspan="5" style="color:var(--text-3); font-style:italic; text-align:center; padding: 18px;">No pending roles — all positions confirmed.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TALENTS -->
+  <div id="page-talents" class="page">
+    <div class="page-header">
+      <h1>Talents</h1>
+      <p>Roster of 8 people · skills from your fixed list</p>
+    </div>
+
+    <div class="block">
+      <div class="block-header">
+        <h2>All talent</h2>
+        <button class="btn btn-primary">+ Add talent</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Skills</th>
+              <th>Availability</th>
+              <th>Current project</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="avatar av-blue">SM</span><span class="talent-name">Sara M.</span></td>
+              <td>Motion designer</td>
+              <td>
+                <span class="skill-tag">Motion</span>
+                <span class="skill-tag">After Effects</span>
+                <span class="skill-tag">Illustration</span>
+              </td>
+              <td><span class="avail-dot" style="background:var(--orange-dot)"></span>From Jul 1</td>
+              <td class="muted">—</td>
+            </tr>
+            <tr>
+              <td><span class="avatar av-purple">TK</span><span class="talent-name">Thomas K.</span></td>
+              <td>Producer</td>
+              <td>
+                <span class="skill-tag">Production</span>
+                <span class="skill-tag">Budget</span>
+                <span class="skill-tag">Logistics</span>
+              </td>
+              <td><span class="avail-dot" style="background:var(--red-dot)"></span>Busy Jun</td>
+              <td>Social Series</td>
+            </tr>
+            <tr>
+              <td><span class="avatar av-green">MT</span><span class="talent-name">Mia T.</span></td>
+              <td>Frontend dev</td>
+              <td>
+                <span class="skill-tag">React</span>
+                <span class="skill-tag">TypeScript</span>
+                <span class="skill-tag">CSS</span>
+              </td>
+              <td><span class="avail-dot" style="background:var(--green-dot)"></span>Available</td>
+              <td>Product Launch</td>
+            </tr>
+            <tr>
+              <td><span class="avatar av-orange">LM</span><span class="talent-name">Lena M.</span></td>
+              <td>Video editor</td>
+              <td>
+                <span class="skill-tag">Premiere</span>
+                <span class="skill-tag">DaVinci</span>
+                <span class="skill-tag">Color grading</span>
+              </td>
+              <td><span class="avail-dot" style="background:var(--orange-dot)"></span>From Jul</td>
+              <td>Annual Report</td>
+            </tr>
+            <tr>
+              <td><span class="avatar av-blue">PV</span><span class="talent-name">Paul V.</span></td>
+              <td>UX designer</td>
+              <td>
+                <span class="skill-tag">Figma</span>
+                <span class="skill-tag">Research</span>
+                <span class="skill-tag">Prototyping</span>
+              </td>
+              <td><span class="avail-dot" style="background:var(--green-dot)"></span>Available</td>
+              <td class="muted">—</td>
+            </tr>
+            <tr>
+              <td><span class="avatar av-purple">JR</span><span class="talent-name">Jules R.</span></td>
+              <td>Art director</td>
+              <td>
+                <span class="skill-tag">Art direction</span>
+                <span class="skill-tag">Photoshop</span>
+                <span class="skill-tag">Brand</span>
+              </td>
+              <td><span class="avail-dot" style="background:var(--green-dot)"></span>Available</td>
+              <td>Brand Campaign Q3</td>
+            </tr>
+            <tr>
+              <td><span class="avatar av-green">ND</span><span class="talent-name">Nina D.</span></td>
+              <td>Strategist</td>
+              <td>
+                <span class="skill-tag">Strategy</span>
+                <span class="skill-tag">Research</span>
+                <span class="skill-tag">Copywriting</span>
+              </td>
+              <td><span class="avail-dot" style="background:var(--red-dot)"></span>Busy</td>
+              <td>Internal Rebrand</td>
+            </tr>
+            <tr>
+              <td><span class="avatar av-orange">CF</span><span class="talent-name">Carlos F.</span></td>
+              <td>Photographer</td>
+              <td>
+                <span class="skill-tag">Photography</span>
+                <span class="skill-tag">Retouching</span>
+                <span class="skill-tag">Studio</span>
+              </td>
+              <td><span class="avail-dot" style="background:var(--green-dot)"></span>Available</td>
+              <td>Brand Campaign Q3</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLANNING -->
+  <div id="page-planning" class="page">
+    <div class="page-header">
+      <h1>Planning</h1>
+      <p>Timeline view · June–September 2026</p>
+    </div>
+
+    <div class="gantt-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green-dot)"></div> Filled</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--orange-dot)"></div> Fixable gap</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red-dot)"></div> Critical gap</div>
+    </div>
+
+    <div class="block">
+      <div class="gantt-wrap">
+        <table class="gantt-table">
+          <thead>
+            <tr>
+              <th class="row-label">Project / Role</th>
+              <th>Jun W1</th><th>Jun W2</th><th>Jun W3</th><th>Jun W4</th>
+              <th>Jul W1</th><th>Jul W2</th><th>Jul W3</th><th>Jul W4</th>
+              <th>Aug W1</th><th>Aug W2</th><th>Aug W3</th><th>Aug W4</th>
+              <th>Sep W1</th><th>Sep W2</th><th>Sep W3</th><th>Sep W4</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Brand Campaign Q3 -->
+            <tr class="project-row">
+              <td class="row-label">Brand Campaign Q3</td>
+              <td colspan="16"></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">Art director</td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">Motion designer</td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">Copywriter</td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">Producer</td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+            </tr>
+
+            <!-- Social Series -->
+            <tr class="project-row">
+              <td class="row-label">Social Series</td>
+              <td colspan="16"></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">Strategist</td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">Video editor</td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+
+            <!-- Product Launch -->
+            <tr class="project-row">
+              <td class="row-label">Product Launch</td>
+              <td colspan="16"></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">Frontend dev</td>
+              <td></td><td></td><td></td><td></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">UX designer</td>
+              <td></td><td></td><td></td><td></td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-fixable"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+              <td><div class="gantt-bar bar-filled"></div></td>
+            </tr>
+            <tr>
+              <td class="row-label" style="padding-left:24px; color:var(--text-2);">Copywriter</td>
+              <td></td><td></td><td></td><td></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+              <td><div class="gantt-bar bar-critical"></div></td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  function showPage(id, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    el.classList.add('active');
+  }
+
+  function togglePending(id) {
+    const panel = document.getElementById('panel-' + id);
+    const icon = document.getElementById('icon-' + id);
+    const isOpen = panel.classList.contains('open');
+    panel.classList.toggle('open', !isOpen);
+    icon.classList.toggle('open', !isOpen);
+  }
+</script>
+
+</body>
+</html>
